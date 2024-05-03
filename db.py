@@ -27,6 +27,15 @@ game_data = db.game_data
 game_result = db.game_result
 
 
+def find_user(data) :
+    try:
+        results = user_collection.find_one(data)
+        return results
+    except PyMongoError as e:
+        print("An error occurred while retrieving data:", e)
+        return None
+    
+
 def create_new_user(user_id,username,join_date) :
     data = {
         "_id" : user_id,
@@ -48,6 +57,7 @@ def create_new_user(user_id,username,join_date) :
         print("An error occurred while retrieving data:", e)
         return str(e)
 
+
 def create_new_data(embed_id,event,current_time) :
     data = {
     "_id": embed_id,
@@ -58,7 +68,6 @@ def create_new_data(embed_id,event,current_time) :
     try :
         # Insert data into MongoDB
         result = game_data.insert_one(data)
-        print("SUCCESS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         print("Data inserted with ID:", result.inserted_id)
     except DuplicateKeyError:
         print("Embed ID already exists in the database.")
@@ -71,6 +80,7 @@ def find_game_data(embed_id) :
     except PyMongoError as e:
         print("An error occurred while retrieving data:", e)
         return None
+    
     
 def update_data(data):
     try:
@@ -85,7 +95,7 @@ def update_data(data):
         return False
     
 
-def check_user_balance(amount,user_id) :
+def check_user_balance(user_id,amount=None) :
     try :
         result = user_collection.find_one({"_id" : user_id})
         if result is not None :
@@ -100,7 +110,7 @@ def check_user_balance(amount,user_id) :
     except PyMongoError as e :
         return e
     
-def credit_user_balance(amount,user_id,time) :
+def credit_user_balance(amount,user_id,time=None) :
     try :
         user_details = user_collection.find_one({"_id": user_id})
         transaction = balance_in(amount)
@@ -122,7 +132,7 @@ def credit_user_balance(amount,user_id,time) :
     except PyMongoError as e:
         return str(e)
         
-def debit_user_balance(amount,user_id,time) :
+def debit_user_balance(amount,user_id,time=None) :
     try:
         user_document = user_collection.find_one({"_id": user_id})
         transaction = balance_out(amount)
@@ -145,14 +155,6 @@ def debit_user_balance(amount,user_id,time) :
     except PyMongoError as e:
         return str(e)
 
-def find_user(data) :
-    try:
-        results = user_collection.find_one(data)
-        return results
-    except PyMongoError as e:
-        print("An error occurred while retrieving data:", e)
-        return None
-    
 
 
 def check_user_admin1(user_id) :
@@ -257,14 +259,12 @@ def recharge_account(user_id,amount) :
      # Check if user exists
     if user_data:
         current_balance = user_data.get("wallet", {}).get("balance", 0)
-
         new_balance = current_balance + amount
-
         user_collection.update_one({"_id": user_id}, {"$set": {"wallet.balance": new_balance}})
 
         print("New balance:", new_balance)
-        return "Account recharged successfully."
+        return True
     else:
-        print("User not found.")
+        return "User not found,Please register."
     
     

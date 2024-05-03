@@ -44,72 +44,36 @@ async def registration_function(ctx: SlashContext):
         # Sending the embed
         await ctx.send(embed=embed)
 
-
-@slash_command(name="create_result",description="Comming soon result",options=[
-    SlashCommandOption(
-        name="game_result",
-        description="Choose a result game",
-        type=OptionType.STRING,
-        required=True,
-        choices=[
-            # {"name": "Head-Tail", "value": "toss_game"},
-            {"name": "Color-Game", "value": "color_game"}
-        ]
-    )
-])
-async def create_result_function(ctx: SlashContext, game_result: str):
+@slash_command(name="profile_view",description="View your user profile details")
+async def profile(ctx: SlashContext):
+    user_id = ctx.author.id
+    username =  ctx.author.display_name
     
-    if game_result:
-        user_id = ctx.author.id
-        if str(user_id) == OWNER_ID :
-            result_res = generate_result(game_result)
+    user_data = find_user({"_id" :user_id })
+    
+    if user_data :
+        balance = user_data.get("wallet", {}).get("balance", 0)
+        transactions = user_data.get("wallet", {}).get("transaction_list", 0)
         
-            print("Result is:", result_res)
-            await ctx.send("Result Create Successfully.")
-        else :
-            await ctx.send("Only admins can access it.")
+        # Create the embed
+        embed = Embed(title=f"Profile for {username}", color=0x0000FF)
+        
+        embed.add_field(name="Balance", value=f"₹{balance}", inline=False)
+        if transactions:
+            transaction_list_str = ""
+            for idx, transaction in enumerate(transactions, start=1):
+                trans_amount = transaction[0].replace("IN", "").replace("OUT", "")
+                trans_time = transaction[1]
+                trans_type = transaction[2] 
+                transaction_list_str += f"{idx}. Type: {trans_type}, Amount: ₹{trans_amount}, Time: {trans_time}\n"
+            
+            embed.add_field(name="Transaction History", value=transaction_list_str, inline=False)
+        else:
+            embed.add_field(name="Transaction History", value="No transactions yet", inline=False)
+        
+        await ctx.send(embed=embed)
     else:
-        await ctx.send(content="No game result provided.")
-        
-
-@slash_command(name="show_result",description="Show the result of a game",options=[
-    SlashCommandOption(
-        name="show_result",
-        description="Choose a game for result",
-        type=OptionType.STRING,
-        required=True,
-        choices=[
-            {"name": "Head-Tail", "value": "toss_game"},
-            {"name": "Color-Game", "value": "color_game"}
-        ]
-    )
-])
-async def show_result_function(ctx : SlashContext,show_result : str) :
-    
-    if str(ctx.author.id) == OWNER_ID :
-        result_data = all_result_data(show_result)
-        print("RESULT ::->",result_data)
-        if result_data is None or len(result_data) == 0 :
-            await ctx.send("No Result available.")
-            return
-        
-        embed = Embed(title="Top Game Results",color=0x0000FF)
-        
-        for index,data in enumerate(result_data,start=1) :
-            event = data.get('game')
-            user = data.get('bet')[0].get('user_id')
-            choise = data.get('bet')[0].get('choise')
-            amount = data.get('bet')[0].get('amount')
-            
-            embed.add_field(name="Winner", value=index, inline=True)
-            embed.add_field(name="Event :", value=event, inline=True)
-            embed.add_field(name="User :", value=f"<@{user}>", inline=True)
-            embed.add_field(name="Choise :", value=choise, inline=False)
-            embed.add_field(name="Amount :", value=amount, inline=False)
-            
-        await ctx.send(embeds=embed)
-    else :
-        await ctx.send("Only admins can access it.")
+        await ctx.send("User not found or data not available.")   
 
 
 @slash_command(name="coin_game",description="Ye Sab Kismat Ka Khel Hai", options=[
@@ -133,7 +97,7 @@ async def show_result_function(ctx : SlashContext,show_result : str) :
 async def coin_game(ctx, user_choice: str, amount: int):
     
     user_id = ctx.author.id
-    res = check_user_balance(amount,user_id)
+    res = check_user_balance(user_id,amount)
     if res == True :
         current_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
         debit_user_balance(amount,user_id,current_time)
@@ -196,59 +160,6 @@ async def coin_game(ctx, user_choice: str, amount: int):
         # Send the embed to the user
         embed_ctx = await ctx.send(embed=embed)
 
-
-@slash_command(name="recharge",description="Recharge your account",options=[
-    SlashCommandOption(
-        name="amount",
-        description="Enter the amount for recharge",
-        type=OptionType.INTEGER,
-        required=True
-    )
-])
-async def recharge_function(ctx : SlashContext, amount : int) :
-    user_id = ctx.author.id
-    
-    if amount:
-        try:
-            res = recharge_account(user_id, int(amount))
-            await ctx.send(res)
-        except Exception as e:
-            await ctx.send(f"An error occurred while recharging your account: {str(e)}")
-    else :
-        await ctx.send("Please enter the amount for recharge.")
-        
-        
-@slash_command(name="profile_view",description="View your user profile details")
-async def profile(ctx: SlashContext):
-    user_id = ctx.author.id
-    username =  ctx.author.display_name
-    
-    user_data = find_user({"_id" :user_id })
-    
-    if user_data :
-        balance = user_data.get("wallet", {}).get("balance", 0)
-        transactions = user_data.get("wallet", {}).get("transaction_list", 0)
-        
-        # Create the embed
-        embed = Embed(title=f"Profile for {username}", color=0x0000FF)
-        
-        embed.add_field(name="Balance", value=f"₹{balance}", inline=False)
-        if transactions:
-            transaction_list_str = ""
-            for idx, transaction in enumerate(transactions, start=1):
-                trans_amount = transaction[0].replace("IN", "").replace("OUT", "")
-                trans_time = transaction[1]
-                trans_type = transaction[2] 
-                transaction_list_str += f"{idx}. Type: {trans_type}, Amount: ₹{trans_amount}, Time: {trans_time}\n"
-            
-            embed.add_field(name="Transaction History", value=transaction_list_str, inline=False)
-        else:
-            embed.add_field(name="Transaction History", value="No transactions yet", inline=False)
-        
-        await ctx.send(embed=embed)
-    else:
-        await ctx.send("User not found or data not available.")   
-  
     
 @slash_command(name="game_zone", description="Ye Sab Kismat Ka Khel Hai", options=[
     SlashCommandOption(
@@ -257,45 +168,17 @@ async def profile(ctx: SlashContext):
         type=OptionType.STRING,
         required=True,
         choices=[
-            # {"name": "Head-Tail", "value": "head_tail"},
             {"name": "Color-Game", "value": "color_game"}
         ]
     )
 ])
 async def game_zone_function(ctx: SlashContext, game_type: str):
+    user_id = ctx.author.id
     start_time = "2024-04-28 12:00"
     end_time = "2024-05-05 23:59"
     current_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
-
-    if game_type == "head_tail":
-        event = "toss_game"
-        embed = Embed(title=f"Event: {event}", color=0x00ff00)
-
-        embed.add_field(name="Start Time:", value=start_time, inline=False)
-        embed.add_field(name="End Time:", value=end_time, inline=False)
-        
-        # Add footer
-        embed.set_footer(text="Place your bet and click the corresponding button to make your guess!")
-
-        component = [
-            Button(style=ButtonStyle.BLUE, label="Head", custom_id="head_button"),
-            Button(style=ButtonStyle.RED, label="Tail", custom_id="tail_button")
-        ]
-
-        # Sending the embed with buttons
-        embed_ctx = await ctx.send(embed=embed, components=component)
-        # print("Embed Id is:", embed_ctx.id)
-        try:
-            res = create_new_data(embed_ctx.id, event,current_time)
-            try:
-                interaction = await ctx.bot.wait_for("button_click", check=check, timeout=60)  # Adjust timeout as needed
-            except asyncio.TimeoutError:
-                await ctx.send("Timeout expired. You didn't click the button in time.")
-                return
-        except Exception as e:
-            print("An error occurred while creating new data.",e)
     
-    elif game_type == "color_game":
+    if game_type == "color_game":
         event ="color_game"
         embed = Embed(title=f"Event : {event} ",
                     color=0x00ff00)
@@ -310,14 +193,19 @@ async def game_zone_function(ctx: SlashContext, game_type: str):
             Button(style=ButtonStyle.BLUE, label="Blue", custom_id="blue"),
             Button(style=ButtonStyle.GREY, label="Cyan", custom_id="cyan")
         ]
-        # Sending the embed with buttons
-        embed_ctx =  await ctx.send(embed=embed, components=component) 
         
-        # print("Embed Id is ::->",embed_ctx.id)
+        res = check_user_balance(user_id)
+        if res == True :
+            # Sending the embed with buttons
+            embed_ctx =  await ctx.send(embed=embed, components=component) 
+        elif res == "nouser" :
+            await ctx.send("User not found. Please register.")
+            return
         try:
             res = create_new_data(embed_ctx.id, event,current_time)
         except Exception as e:
             print("An error occurred while creating new data.",e)
+        
 
 @component_callback("red")
 async def red_function(ctx : ComponentContext) :
@@ -466,117 +354,100 @@ async def cyan_function(ctx : ComponentContext) :
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-@component_callback("tail_button")
-async def tail_function(ctx : ComponentContext) :
-    embed_id = ctx.message_id
-    user_id = ctx.author.id
-    print("Embed tail call back::->",ctx.message_id)
-    my_modal = Modal(
-        ShortText(
-            label="Selected Option :",
-            custom_id="user_choise",
-            value="tail",
-        ),
-        ShortText(
-            label="Enter Amount (₹) :",
-            placeholder="Enter Amount Please",
-            custom_id="amount",
-            required=True,
-        ),
-        title="Head-Tail Game Add Your Balance :",
+@slash_command(name="create_result",description="Comming soon result",options=[
+    SlashCommandOption(
+        name="game_result",
+        description="Choose a result game",
+        type=OptionType.STRING,
+        required=True,
+        choices=[
+            # {"name": "Head-Tail", "value": "toss_game"},
+            {"name": "Color-Game", "value": "color_game"}
+        ]
     )
-    await ctx.send_modal(modal=my_modal)
-    try :
-        modal_ctx = await ctx.bot.wait_for_modal(my_modal,timeout=60)
-    except asyncio.TimeoutError:
-            await ctx.send("The interaction has expired.")
-            return
-    if modal_ctx is None:
-            await ctx.send("User didn't enter amount or canceled the modal.")
-    user_amount = modal_ctx.responses.get("amount")
-    res = check_user_balance(user_amount,user_id)
-    if res :
-        game_data = find_game_data(embed_id)
-        user_bet = {
-            "user_id" : user_id,
-            "choise" : "tail",
-            "amount" : int(user_amount)}
+])
+async def create_result_function(ctx: SlashContext, game_result: str):
+    
+    if game_result:
+        user_id = ctx.author.id
+        if str(user_id) == OWNER_ID :
+            result_res = generate_result(game_result)
         
-        game_data['bet'].append(user_bet)
-        print("Update data ::",game_data)
-        res = update_data(game_data)
-        if res :
-            current_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
-            debit_user_balance(user_amount,user_id,current_time)
-        await modal_ctx.send(f"<@{ctx.author.id}> Your bet add successfully")
-    else :
-        warning_message = "Your account balance is low. Please recharge your account."
-        await modal_ctx.send(content=warning_message)
-        return
+            print("Result is:", result_res)
+            await ctx.send("Result Create Successfully.")
+        else :
+            await ctx.send("Only admins can access it.")
+    else:
+        await ctx.send(content="No game result provided.")
 
-@component_callback("head_button")  
-async def head_function(ctx : ComponentContext) :
-    embed_id = ctx.message_id
-    user_id = ctx.author.id
-    my_modal = Modal(
-        ShortText(
-            label="Selected Option :",
-            custom_id="user_choise",
-            value="head",
-        ),
-        ShortText(
-            label="Enter Amount (₹) :",
-            placeholder="Enter Amount Please",
-            custom_id="amount",
-            required=True,
-        ),
-        title="Head-Tail Game Add Your Balance :",
+
+@slash_command(name="show_result",description="Show the result of a game",options=[
+    SlashCommandOption(
+        name="show_result",
+        description="Choose a game for result",
+        type=OptionType.STRING,
+        required=True,
+        choices=[
+            {"name": "Head-Tail", "value": "toss_game"},
+            {"name": "Color-Game", "value": "color_game"}
+        ]
     )
-    await ctx.send_modal(modal=my_modal)
-    try :
-        modal_ctx = await ctx.bot.wait_for_modal(my_modal,timeout=60)
-    except asyncio.TimeoutError:
-            await ctx.send("The interaction has expired.")
+])
+async def show_result_function(ctx : SlashContext,show_result : str) :
+    
+    if str(ctx.author.id) == OWNER_ID :
+        result_data = all_result_data(show_result)
+        print("RESULT ::->",result_data)
+        if result_data is None or len(result_data) == 0 :
+            await ctx.send("No Result available.")
             return
-    if modal_ctx is None:
-            await ctx.send("User didn't enter amount or canceled the modal.")
-    user_amount = modal_ctx.responses.get("amount")
-    
-    res = check_user_balance(user_amount,user_id)
-    if res :
-        game_data = find_game_data(embed_id)
-        user_bet = {
-            "user_id" : user_id,
-            "choise" : "head",
-            "amount" : int(user_amount)}
         
-        game_data['bet'].append(user_bet)
-        print("Update data ::",game_data)
-        res = update_data(game_data)
-        if res :
-            current_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
-            debit_user_balance(user_amount,user_id,current_time)
-        await modal_ctx.send(f"<@{ctx.author.id}> Your bet add successfully")
+        embed = Embed(title="Top Game Results",color=0x0000FF)
+        
+        for index,data in enumerate(result_data,start=1) :
+            event = data.get('game')
+            user = data.get('bet')[0].get('user_id')
+            choise = data.get('bet')[0].get('choise')
+            amount = data.get('bet')[0].get('amount')
+            
+            embed.add_field(name="Winner", value=index, inline=True)
+            embed.add_field(name="Event :", value=event, inline=True)
+            embed.add_field(name="User :", value=f"<@{user}>", inline=True)
+            embed.add_field(name="Choise :", value=choise, inline=False)
+            embed.add_field(name="Amount :", value=amount, inline=False)
+            
+        await ctx.send(embeds=embed)
     else :
-        warning_message = "Your account balance is low. Please recharge your account."
-        await modal_ctx.send(content=warning_message)
-        return
-    
-    
+        await ctx.send("Only admins can access it.")
+
+
+@slash_command(name="recharge",description="Recharge your account",options=[
+    SlashCommandOption(
+        name="amount",
+        description="Enter the amount for recharge",
+        type=OptionType.INTEGER,
+        required=True
+    )
+])
+async def recharge_function(ctx : SlashContext, amount : int) :
+    user_id = ctx.author.id
+    time = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+    if amount:
+        try:
+            res = recharge_account(user_id, int(amount))
+            if res :
+                credit_user_balance(amount,user_id,time)
+                await ctx.send("Account recharged successfully.")
+                return
+            await ctx.send(res)
+        except Exception as e:
+            await ctx.send(f"An error occurred while recharging your account: {str(e)}")
+    else :
+        await ctx.send("Please enter the amount for recharge.")
+
+
+
+        
 
 @Task.create(IntervalTrigger(minutes=1))
 async def result_expiry_payment():
