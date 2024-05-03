@@ -8,8 +8,8 @@ from helper.transaction import balance_in,balance_out
 from datetime import datetime,timedelta
 # Load environment Variables
 load_dotenv()
-
 MONGO_URI = os.getenv("MONGO_URI")
+win_plus = int(os.getenv('win_plus'))
 
 client = MongoClient(MONGO_URI, server_api=ServerApi("1"))
 
@@ -204,7 +204,7 @@ def generate_result(game):
                                 amount = data["bet"][0].get("amount")
                                 print("AMOUNT ::->",amount)
                                 expiry_time = (datetime.utcnow() + timedelta(minutes=60)).strftime("%Y-%m-%d %H:%M")
-                                credit_user_balance(amount,user_id,expiry_time)
+                                credit_user_balance(amount*win_plus,user_id,expiry_time)
                         else:
                             pass
                     else:
@@ -252,19 +252,4 @@ def all_result_data(game=None):
     except Exception as e:
         print("An error occurred while retrieving data:", e)
         return []
-    
-
-def recharge_account(user_id,amount) :
-    user_data = user_collection.find_one({"_id" : user_id})
-     # Check if user exists
-    if user_data:
-        current_balance = user_data.get("wallet", {}).get("balance", 0)
-        new_balance = current_balance + amount
-        user_collection.update_one({"_id": user_id}, {"$set": {"wallet.balance": new_balance}})
-
-        print("New balance:", new_balance)
-        return True
-    else:
-        return "User not found,Please register."
-    
     

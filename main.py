@@ -79,7 +79,7 @@ async def profile(ctx: SlashContext):
 @slash_command(name="coin_game",description="Ye Sab Kismat Ka Khel Hai", options=[
     SlashCommandOption(
         name="user_choice",
-        description="Please choose 'Head' or 'Tail'",
+        description="Please select 'Head' or 'Tail' If you win the game you will get 2x value back",
         type=OptionType.STRING,
         required=True,
         choices=[
@@ -194,11 +194,11 @@ async def game_zone_function(ctx: SlashContext, game_type: str):
             Button(style=ButtonStyle.GREY, label="Cyan", custom_id="cyan")
         ]
         
-        res = check_user_balance(user_id)
-        if res == True :
+        res = find_user({"_id" : user_id})
+        if res:
             # Sending the embed with buttons
             embed_ctx =  await ctx.send(embed=embed, components=component) 
-        elif res == "nouser" :
+        else:
             await ctx.send("User not found. Please register.")
             return
         try:
@@ -432,18 +432,23 @@ async def show_result_function(ctx : SlashContext,show_result : str) :
 async def recharge_function(ctx : SlashContext, amount : int) :
     user_id = ctx.author.id
     time = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
-    if amount:
-        try:
-            res = recharge_account(user_id, int(amount))
-            if res :
-                credit_user_balance(amount,user_id,time)
-                await ctx.send("Account recharged successfully.")
-                return
-            await ctx.send(res)
-        except Exception as e:
-            await ctx.send(f"An error occurred while recharging your account: {str(e)}")
-    else :
-        await ctx.send("Please enter the amount for recharge.")
+    res = find_user({"_id" : user_id})
+    if res:
+        if amount:
+            try:
+                res = credit_user_balance(amount,user_id,time)
+                if res :
+                    await ctx.send("Account recharged successfully.")
+                    return
+                await ctx.send(res)
+            except Exception as e:
+                await ctx.send(f"An error occurred while recharging your account: {str(e)}")
+        else :
+            await ctx.send("Please enter the amount for recharge.")
+    else:
+        await ctx.send("User not found. Please register.")
+        return
+
 
 
 
